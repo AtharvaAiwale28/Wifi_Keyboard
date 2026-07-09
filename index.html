@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Remote Keyboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
+<style>
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: #111827; color: #e5e7eb;
+    font-family: -apple-system, system-ui, sans-serif;
+    display: flex; align-items: center; justify-content: center;
+    text-align: center;
+  }
+  #pad {
+    width: 90%; height: 80%;
+    border: 2px dashed #4b5563;
+    border-radius: 16px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    outline: none;
+  }
+  #pad.active { border-color: #22c55e; background: #052e1a; }
+  #status { font-size: 1.1rem; margin-top: 12px; }
+  #lastkey { font-size: 2rem; margin-top: 20px; min-height: 2.5rem; }
+  h2 { margin: 0 0 8px 0; }
+</style>
+</head>
+<body>
+  <div id="pad" tabindex="0">
+    <h2>Remote Keyboard</h2>
+    <div id="status">Tap here, then type on your external keyboard</div>
+    <div id="lastkey"></div>
+  </div>
+
+<script>
+  const TOKEN = "{{ token }}";
+  const pad = document.getElementById('pad');
+  const statusEl = document.getElementById('status');
+  const lastKeyEl = document.getElementById('lastkey');
+
+  const socket = io({ query: { token: TOKEN } });
+
+  socket.on('connect', () => {
+    statusEl.textContent = 'Connected. Tap here, then type.';
+  });
+  socket.on('disconnect', () => {
+    statusEl.textContent = 'Disconnected. Reconnecting...';
+    pad.classList.remove('active');
+  });
+
+  pad.addEventListener('focus', () => {
+    pad.classList.add('active');
+    statusEl.textContent = 'Focused — keystrokes are being sent';
+  });
+  pad.addEventListener('blur', () => {
+    pad.classList.remove('active');
+    statusEl.textContent = 'Not focused — tap here to resume';
+  });
+
+  // Keep focus on the pad even if the on-screen keyboard tries to steal it
+  pad.addEventListener('touchstart', () => pad.focus());
+
+  pad.addEventListener('keydown', (e) => {
+    e.preventDefault();
+    lastKeyEl.textContent = e.key === ' ' ? 'Space' : e.key;
+    socket.emit('keydown', { key: e.key });
+  });
+
+  pad.addEventListener('keyup', (e) => {
+    e.preventDefault();
+    socket.emit('keyup', { key: e.key });
+  });
+
+  window.addEventListener('load', () => pad.focus());
+</script>
+</body>
+</html>
